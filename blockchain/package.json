@@ -1,0 +1,20 @@
+{
+  "name": "microgrid-exchange-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for Autonomous Transactive Microgrid Energy Exchange",
+  "main": "index.js",
+  "scripts": {
+    "compile": "node compile.js",
+    "test": "hardhat test --no-compile",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost --no-compile"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.5",
+    "solc": "^0.8.24"
+  }
+}

@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mgx_postgres
+    environment:
+      POSTGRES_DB: mgx_db
+      POSTGRES_USER: mgx
+      POSTGRES_PASSWORD: mgx_secret_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mgx -d mgx_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mgx_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migration:
+    build: .
+    container_name: mgx_migration
+    environment:
+      MGX_DATABASE_URL: postgresql+asyncpg://mgx:mgx_secret_password@postgres:5432/mgx_db
+      MGX_JWT_SECRET: replace-with-a-secure-32-byte-hex-secret-in-production
+      MGX_ADMIN_PASSWORD: admin-secure-password-123
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head && python -m app.db.seed"
+
+  api:
+    build: .
+    container_name: mgx_api
+    environment:
+      MGX_DATABASE_URL: postgresql+asyncpg://mgx:mgx_secret_password@postgres:5432/mgx_db
+      MGX_REDIS_URL: redis://redis:6379/0
+      MGX_JWT_SECRET: replace-with-a-secure-32-byte-hex-secret-in-production
+      MGX_ADMIN_PASSWORD: admin-secure-password-123
+      MGX_RATE_LIMIT_PER_MINUTE: 120
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+volumes:
+  postgres_data:
+  redis_data:
